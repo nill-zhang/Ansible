@@ -1,0 +1,132 @@
+-hosts: Virtual host
+ tasks:
+       -name: add services
+	     yum: {{packages}}},state=latest
+		 with_items:
+		           - @^virtualiztion hosts
+				   - vsftpd
+				   - httpd
+				   - tftpd
+				   - nfs-utils
+				   - cifs-utils
+				   - policycoreutils-python
+				   - elinks
+				   
+				   #TODO
+	   -name: create kickstart shared directory
+	    file: path=/var/www/html/vm_kickstart state=directory
+		
+	   -name: copy kickstart files to Virtual Host
+		local_action: command rsync -a /root/vm_kickstart/*.cfg /var/www/html/vm_kickstart/
+	   
+	   -name: start httpd service
+	    service: name=http state=restarted
+	   
+	   -name: enable http service at boot time
+	    service: name= http enable=yes
+	    
+	   -name: setup local  nfs service
+	   -name: setup local ftp service
+	   -name: setup local dhcp,tftp service
+	   
+	   -name: install ipa server virtual machine
+	   command: virt-install --name=ipa\
+	                         --disk path=/var/lib/libvirt/images/ipa.dsk,size=15\
+	                         --nographics\
+					         --vcpus=2\ 
+					         --memory=4096\ 
+					         --location=http://centos.mirrors.atwab.net/7/os/x86_64/
+					         --os-type linux\
+					         --os-variant centos7.0\
+					         --extra-args="ks=http://localhost/vm_kickstart/ipa.ks.cfg console=ttyS0,115200n8"
+		-name: get ipa server ip
+		
+		
+		-name: configure /etc/hosts
+		
+		
+		-name: configure DNS TO 8.8.8.8
+		
+		
+		-name: install ipa-server unattended
+		ipa-server-install --setup-dns --realm=SFZHANG.COM --domain=sfzhang.com\ 
+		                   --ds-password=password --admin-password=password\  
+						   --unattended --mkhomedir --forwarder=8.8.8.8\ 
+						   --autoreverse
+		
+		-name: add host entry and otp for client1.sfzhang.com
+		
+		
+		
+		-name: add host entry and otp for client2.sfzhng.com
+		
+		
+		-name: add host entry and otp for services.sfzhang.com
+		
+		
+		
+		ipa-server-install:
+    ipa host-add client1.sfzhang.com --password=sfzhang
+	ipa host-add client2.sfzhang.com --password=sfzhang
+	ipa host-add services.sfzhang.com --password=sfzhang
+	
+	IP address set to 192.168.122.200, default gateway to 192.168.122.1, and
+	DNS temporarily to 8.8.8.8
+	/etc/hosts :192.168.122.200 ipaserver.sfzhang.com ipaserver
+	selinux permissive
+	hostnamectl set-hostname ipa.sfzhang.com
+	yum install -y ipa-server bind bind-dyndb-ldap ipa-server-dns
+	ipa-server-install --setup-dns --realm SFZHANG.COM --ds-password password --admin-password password --unattended
+	for i in http https ldap ldaps kerberos kpasswd dns ntp; do firewall-cmd --permanent --add-service $i; done
+	firewall-cmd --reload
+					
+	   -name: install services virtual machine
+	   command: virt-install --name=ipa\
+	                         --disk path=/var/lib/libvirt/images/ipa.dsk,size=15\
+	                         --nographics\
+					         --vcpus=2\ 
+					         --memory=4096\ 
+					         --location=http://centos.mirrors.atwab.net/7/os/x86_64/
+					         --os-type linux\
+					         --os-variant centos7.0\
+					         --extra-args="ks=http://localhost/vm_kickstart/services.ks.cfg console=ttyS0,115200n8"
+							 
+	   -name: install client1 virtual machine
+	   command: virt-install --name=ipa\
+	                         --disk path=/var/lib/libvirt/images/ipa.dsk,size=15\
+	                         --nographics\
+					         --vcpus=1\ 
+					         --memory=2048\ 
+					         --location=http://centos.mirrors.atwab.net/7/os/x86_64/
+					         --os-type linux\
+					         --os-variant centos7.0\
+					         --extra-args="ks=http://localhost/vm_kickstart/client1.ks.cfg console=ttyS0,115200n8"
+	   -name: install client2 virtual machine
+	   command: virt-install --name=ipa\
+	                         --disk path=/var/lib/libvirt/images/ipa.dsk,size=15\
+	                         --nographics\
+					         --vcpus=1\ 
+					         --memory=2048\ 
+					         --location=http://centos.mirrors.atwab.net/7/os/x86_64/
+					         --os-type linux\
+					         --os-variant centos7.0\
+					         --extra-args="ks=http://localhost/vm_kickstart/client2.ks.cfg console=ttyS0,115200n8"
+		
+	   -name: execute initialization scripts
+	   
+	   
+	   
+	   #add the server's IP address as the first entry in the list of name servers in the client's /etc/resolv.conf file
+#don't do it manually, do it through network manager
+
+# Generate SSH keys to ensure that ipa-client-install uploads them to the IdM server
+#/usr/sbin/sshd-keygen
+
+# Get the hostname to set as the host principal
+#bin/hostname > /tmp/hostname.txt
+
+### Run the client install script
+###Red Hat recommends not to start the sshd service prior to the kickstart enrollment.
+###While starting sshd before enrolling the client generates the SSH keys automatically
+###using the above script is the preferred solution.
+#/usr/sbin/ipa-client-install --domain=SFZHANG.COM --enable-dns-updates --mkhomedir -w sfzhang --realm=SFZHANG.COM --server=ipa.sfzhang.com --unattended --force-ntpd

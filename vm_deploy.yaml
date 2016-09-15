@@ -1,0 +1,78 @@
+---
+   #ipa-server and ipa-client installation on virtual machines
+   
+- hosts: ipa.sfzhang.com
+  gather_facts: yes
+  tasks: 
+
+        
+        - name: configure /etc/hosts
+          shell:  echo {{ansible_eno16777736.ipv4.address}} {{ansible_nodename}} >>/etc/hosts
+        
+          #sometimes,  you can not use variables in some modules, use with_items,pay attenion to 
+          #the quote and blank after colon
+          #-name:  an alternative way to change /etc/hosts
+          #lineinfile: dest=/etc/hosts line='{{item.ip}} {{item.name}}' state=present
+          #with_items:
+          #       - {ip: "{{ansible_eno16777736.ipv4.address}}" , name: "{{ansible_nodename}}"}
+
+    
+        - name: configure DNS TO 8.8.8.8
+          nmcli: conn_name=eth0 dns4="8.8.8.8" state=present
+        
+        - name: disable selinux
+          selinux: policy=targeted state=permissive
+        
+        - name: install ipa-server unattended
+          shell: "ipa-server-install --setup-dns --realm=SFZHANG.COM --domain=sfzhang.com 
+                           --ds-password=password --admin-password=password
+                           --unattended --mkhomedir --forwarder=8.8.8.8
+                           --autoreverse"
+        
+        - name: add host entry and otp for client1.sfzhang.com
+          shell: ipa host-add client1.sfzhang.com --password=sfzhang
+        
+        
+        - name: add host entry and otp for client2.sfzhang.com
+          shell: ipa host-add client2.sfzhang.com --password=sfzhang
+        
+        
+        - name: add host entry and otp for services.sfzhang.com
+          shell: ipa host-add services.sfzhang.com --password=sfzhang
+        
+        - name: enable relevant ipa-server ports in firewall-cmd
+          firewalld: service={{item}} state=enabled permanent=true immediate=true
+          with_items: 
+                    - http
+                    - https
+                    - ldap
+                    - ldaps
+                    - kerberos
+                    - kpasswd
+                    - dns
+                    - ntp
+        - name: set ipa_server_address to be used by clients
+          set_fact: ipa_server_address={{ansible_eno16777736.ipv4.address}}
+        
+        
+- hosts: client1.sfzhang.com:client2.sfzhang.com:services.sfzhang.com
+  gather_facts: no
+  tasks:                     
+        - name: ignore peer dns and enable IPA dns on clients
+          shell: nmcli c modify eth0 ipv4.ignore-auto-dns=yes ipv4.dns={{ipa_server_address}}
+          
+        - name: Generate SSH keys to ensure that ipa-client-install uploads them to the ipa server
+          command: /usr/sbin/sshd-keygen
+       
+        - name: Get the hostname to set as the host principal
+          command: /bin/hostname >/tmp/hostname.txt
+       
+        - name: ipa client install
+          #Red Hat recommends not to start the sshd service prior to the kickstart enrollment.
+          #While starting sshd before enrolling the client generates the SSH keys automatically
+          #using the above script is the preferred solution.
+          command: "/usr/sbin/ipa-client-install --domain=SFZHANG.COM
+                   --enable-dns-updates --mkhomedir --password=sfzhang 
+                   --realm=SFZHANG.COM --server=ipa.sfzhang.com 
+                   --unattended --force-ntpd"
+       

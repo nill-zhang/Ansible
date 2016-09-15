@@ -1,0 +1,125 @@
+---
+        #for Virtual Host
+        
+- hosts: virtualhost
+  gather_facts: yes
+  tasks:
+
+        - name: install necessary packages
+          yum: name={{item}} state=present
+          with_items:
+                   - "@^virtualization host"
+                   - vsftpd
+                   - httpd
+                   - virt-install
+                   - virt-manager
+                   - libvirt-python
+                   - libvirt-client
+                   - tftp-server
+                   - nfs-utils
+                   - cifs-utils
+                   - policycoreutils-python
+                   - elinks
+                   - gcc
+                   - python-devel
+                   - openssl-devel
+                   - libffi-devel
+                   - epel-release
+                   - bpython
+                   - python-pip
+                   - ansible
+                   - nmap
+
+        - name: update all packages
+          yum: name=* state=latest
+
+        - name: create kickstart shared directory and python_init directory
+          file: path={{item}} state=directory
+          with_items:
+                   - /var/www/html/vm_kickstart
+                   - /root/python_init
+         
+          #- name: copy kickstart files to Virtual Host
+          #local_action: command rsync -a /root/vm_kickstart/*.cfg /var/www/html/vm_kickstart/
+        
+        - name: copy kickstart files to Virtual Host
+          copy: src={{item}} dest=/var/www/html/vm_kickstart
+          with_fileglob:
+                   - /root/vm_kickstart/*.cfg
+                   
+        - name: copy python files to Virtual Host
+          copy: src={{item}} dest=/root/python_init mode=0755
+          with_fileglob:
+                   - /root/python_init/*
+                   
+        - name: copy vm_deploy.yaml to host
+          copy: src=/root/yaml/vm_deploy.yaml dest=/etc/ansible/vm_deploy.yaml
+        
+        - name: start libvirtd service
+          service: name=libvirtd state=restarted
+       
+        - name: enable libvirtd service at boot time
+          service: name=libvirtd enabled=yes
+
+        - name: start httpd service
+          service: name=httpd state=restarted
+       
+        - name: enable http service at boot time
+          service: name=httpd enabled=yes
+        
+       #- name: setup local  nfs service
+       #- name: setup local ftp service
+       #- name: setup local dhcp,tftp service
+       
+        - name: install ipa server virtual machine
+          command: 'virt-install --name=ipa
+                    --disk path=/var/lib/libvirt/images/ipa.dsk,size=15
+                    --nographics
+                    --vcpus=2
+                    --memory=4096
+                    --location=http://centos.mirrors.atwab.net/7/os/x86_64
+                    --os-type linux
+                    --os-variant centos7.0
+                    --extra-args="ks=http://localhost/vm_kickstart/ipa.ks.cfg console=ttyS0,115200n8"'
+                    
+        - name: install services virtual machine
+          command: 'virt-install --name=services
+                    --disk path=/var/lib/libvirt/images/ipa.dsk,size=15
+                    --nographics
+                    --vcpus=2
+                    --memory=4096
+                    --location=http://centos.mirrors.atwab.net/7/os/x86_64
+                    --os-type linux
+                    --os-variant centos7.0
+                    --extra-args="ks=http://localhost/vm_kickstart/services.ks.cfg console=ttyS0,115200n8"'
+                             
+        - name: install client1 virtual machine
+          command: 'virt-install --name=client1
+                    --disk path=/var/lib/libvirt/images/ipa.dsk,size=15
+                    --nographics
+                    --vcpus=1
+                    --memory=2048
+                    --location=http://centos.mirrors.atwab.net/7/os/x86_64
+                    --os-type linux
+                    --os-variant centos7.0
+                    --extra-args="ks=http://localhost/vm_kickstart/client1.ks.cfg console=ttyS0,115200n8"'
+                    
+        - name: install client2 virtual machine
+          command: 'virt-install --name=client2
+                    --disk path=/var/lib/libvirt/images/ipa.dsk,size=15
+                    --nographics
+                    --vcpus=1
+                    --memory=2048
+                    --location=http://centos.mirrors.atwab.net/7/os/x86_64
+                    --os-type linux
+                    --os-variant centos7.0
+                    --extra-args="ks=http://localhost/vm_kickstart/client2.ks.cfg console=ttyS0,115200n8"'
+                    
+        - name: Wait for the last virtual machine to reboot
+          wait_for: timeout=300
+       
+        - name: execute vm-initialization script
+          command: /root/python_init/deploy.py 192.168.122.*
+       
+        - name: install ipa client on virtual machines
+          shell: ansible-playbook -i /etc/ansible/hosts /etc/ansible/vm_deploy.yaml

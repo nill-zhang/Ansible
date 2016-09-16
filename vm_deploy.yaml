@@ -7,7 +7,7 @@
 
         
         - name: configure /etc/hosts
-          shell:  echo {{ansible_eno16777736.ipv4.address}} {{ansible_nodename}} >>/etc/hosts
+          shell:  echo {{ansible_eth0.ipv4.address}} {{ansible_nodename}} >>/etc/hosts
         
           #sometimes,  you can not use variables in some modules, use with_items,pay attenion to 
           #the quote and blank after colon
@@ -17,8 +17,9 @@
           #       - {ip: "{{ansible_eno16777736.ipv4.address}}" , name: "{{ansible_nodename}}"}
 
     
-        - name: configure DNS TO 8.8.8.8
-          nmcli: conn_name=eth0 dns4="8.8.8.8" state=present
+          #name: configure DNS TO 8.8.8.8
+          #nmcli: conn_name=eth0 dns4="8.8.8.8" state=present
+          #shell: nmcli c modify eth0 ipv4.dns 8.8.8.8
         
         - name: disable selinux
           selinux: policy=targeted state=permissive
@@ -27,7 +28,7 @@
           shell: "ipa-server-install --setup-dns --realm=SFZHANG.COM --domain=sfzhang.com 
                            --ds-password=password --admin-password=password
                            --unattended --mkhomedir --forwarder=8.8.8.8
-                           --autoreverse"
+                           --reverse-zone=122.168.192.in-addr.arpa"
         
         - name: add host entry and otp for client1.sfzhang.com
           shell: ipa host-add client1.sfzhang.com --password=sfzhang
@@ -52,7 +53,7 @@
                     - dns
                     - ntp
         - name: set ipa_server_address to be used by clients
-          set_fact: ipa_server_address={{ansible_eno16777736.ipv4.address}}
+          set_fact: ipa_server_address={{ansible_eth0.ipv4.address}}
         
         
 - hosts: client1.sfzhang.com:client2.sfzhang.com:services.sfzhang.com
@@ -71,7 +72,7 @@
           #Red Hat recommends not to start the sshd service prior to the kickstart enrollment.
           #While starting sshd before enrolling the client generates the SSH keys automatically
           #using the above script is the preferred solution.
-          command: "/usr/sbin/ipa-client-install --domain=SFZHANG.COM
+          command: "/usr/sbin/ipa-client-install --domain=sfzhang.com
                    --enable-dns-updates --mkhomedir --password=sfzhang 
                    --realm=SFZHANG.COM --server=ipa.sfzhang.com 
                    --unattended --force-ntpd"

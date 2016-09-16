@@ -80,43 +80,43 @@
                     --location=http://centos.mirrors.atwab.net/7/os/x86_64
                     --os-type linux
                     --os-variant centos7.0
-                    --extra-args="ks=http://localhost/vm_kickstart/ipa.ks.cfg console=ttyS0,115200n8"'
+                    --extra-args="ks=http://192.168.122.1/vm_kickstart/ipa.ks.cfg console=ttyS0,115200n8"'
                     
         - name: install services virtual machine
           command: 'virt-install --name=services
-                    --disk path=/var/lib/libvirt/images/ipa.dsk,size=15
+                    --disk path=/var/lib/libvirt/images/services.dsk,size=15
                     --nographics
                     --vcpus=2
                     --memory=4096
                     --location=http://centos.mirrors.atwab.net/7/os/x86_64
                     --os-type linux
                     --os-variant centos7.0
-                    --extra-args="ks=http://localhost/vm_kickstart/services.ks.cfg console=ttyS0,115200n8"'
+                    --extra-args="ks=http://192.168.122.1/vm_kickstart/services.ks.cfg console=ttyS0,115200n8"'
                              
         - name: install client1 virtual machine
           command: 'virt-install --name=client1
-                    --disk path=/var/lib/libvirt/images/ipa.dsk,size=15
+                    --disk path=/var/lib/libvirt/images/client1.dsk,size=15
                     --nographics
                     --vcpus=1
                     --memory=2048
                     --location=http://centos.mirrors.atwab.net/7/os/x86_64
                     --os-type linux
                     --os-variant centos7.0
-                    --extra-args="ks=http://localhost/vm_kickstart/client1.ks.cfg console=ttyS0,115200n8"'
+                    --extra-args="ks=http://192.168.122.1/vm_kickstart/client1.ks.cfg console=ttyS0,115200n8"'
                     
         - name: install client2 virtual machine
           command: 'virt-install --name=client2
-                    --disk path=/var/lib/libvirt/images/ipa.dsk,size=15
+                    --disk path=/var/lib/libvirt/images/client2.dsk,size=15
                     --nographics
                     --vcpus=1
                     --memory=2048
                     --location=http://centos.mirrors.atwab.net/7/os/x86_64
                     --os-type linux
                     --os-variant centos7.0
-                    --extra-args="ks=http://localhost/vm_kickstart/client2.ks.cfg console=ttyS0,115200n8"'
+                    --extra-args="ks=http://192.168.122.1/vm_kickstart/client2.ks.cfg console=ttyS0,115200n8"'
                     
-        - name: Wait for the last virtual machine to reboot
-          wait_for: timeout=300
+        - name: Pause for 10 minutes
+          pause: minutes=100
        
         - name: execute vm-initialization script
           command: /root/python_init/deploy.py 192.168.122.*

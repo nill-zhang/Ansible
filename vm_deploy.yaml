@@ -29,17 +29,28 @@
                            --ds-password=password --admin-password=password
                            --unattended --mkhomedir --forwarder=8.8.8.8
                            --reverse-zone=122.168.192.in-addr.arpa"
-        
+
+        - name: repeatedly echo kerberos admin password for interaction with kinit
+          shell: yes password|kinit admin
+      
+        #if use expect module make sure pexpect 3.3+ is installed
+        #- name: init admin credentials
+        #  expect: 
+        #      command: kinit admin
+        #      responses: 
+        #         "admin@SFZHANG.COM": "password"
+        #      echo: yes
+
         - name: add host entry and otp for client1.sfzhang.com
-          shell: ipa host-add client1.sfzhang.com --password=sfzhang
+          shell: ipa host-add client1.sfzhang.com --password=sfzhang --force
         
         
         - name: add host entry and otp for client2.sfzhang.com
-          shell: ipa host-add client2.sfzhang.com --password=sfzhang
+          shell: ipa host-add client2.sfzhang.com --password=sfzhang --force
         
         
         - name: add host entry and otp for services.sfzhang.com
-          shell: ipa host-add services.sfzhang.com --password=sfzhang
+          shell: ipa host-add services.sfzhang.com --password=sfzhang --force
         
         - name: enable relevant ipa-server ports in firewall-cmd
           firewalld: service={{item}} state=enabled permanent=true immediate=true
@@ -52,6 +63,7 @@
                     - kpasswd
                     - dns
                     - ntp
+
         - name: set ipa_server_address to be used by clients
           set_fact: ipa_server_address={{ansible_eth0.ipv4.address}}
         
@@ -60,13 +72,17 @@
   gather_facts: no
   tasks:                     
         - name: ignore peer dns and enable IPA dns on clients
-          shell: nmcli c modify eth0 ipv4.ignore-auto-dns=yes ipv4.dns={{ipa_server_address}}
+          shell: nmcli c modify 'System eth0' ipv4.ignore-auto-dns yes ipv4.dns {{ipa_server_address}}
           
         - name: Generate SSH keys to ensure that ipa-client-install uploads them to the ipa server
           command: /usr/sbin/sshd-keygen
        
+        # variables like $HOME and operations like"><|;&" do not work in command module
+        #- name: Get the hostname to set as the host principal
+        #  command: /bin/hostname >/tmp/hostname.txt
+        
         - name: Get the hostname to set as the host principal
-          command: /bin/hostname >/tmp/hostname.txt
+          shell: hostname >/tmp/hostname.txt
        
         - name: ipa client install
           #Red Hat recommends not to start the sshd service prior to the kickstart enrollment.

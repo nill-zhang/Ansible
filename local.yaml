@@ -115,7 +115,7 @@
                     --os-variant centos7.0
                     --extra-args="ks=http://192.168.122.1/vm_kickstart/client2.ks.cfg console=ttyS0,115200n8"'
                     
-        - name: Pause for 10 minutes
+        - name: Pause for 100 minutes
           pause: minutes=100
        
         - name: execute vm-initialization script

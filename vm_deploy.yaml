@@ -23,7 +23,10 @@
         
         - name: disable selinux
           selinux: policy=targeted state=permissive
-        
+
+        - name: make sure rngd service is started to generate high-quality entropy
+          service: name=rngd state=started
+           
         - name: install ipa-server unattended
           shell: "ipa-server-install --setup-dns --realm=SFZHANG.COM --domain=sfzhang.com 
                            --ds-password=password --admin-password=password

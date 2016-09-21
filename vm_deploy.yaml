@@ -70,6 +70,9 @@
         - name: set ipa_server_address to be used by clients
           set_fact: ipa_server_address={{ansible_eth0.ipv4.address}}
         
+        - name: make sure the link is up
+          shell: nmcli c up "System eth0"
+           
         
 - hosts: client1.sfzhang.com:client2.sfzhang.com:services.sfzhang.com
   gather_facts: no
@@ -77,6 +80,9 @@
         - name: ignore peer dns and enable IPA dns on clients
           shell: nmcli c modify 'System eth0' ipv4.ignore-auto-dns yes ipv4.dns {{ipa_server_address}}
           
+        - name: you have to restart connection to make sure new DNS server is loaded in /etc/resolv.conf
+          shell: nmcli c down 'System eth0';nmcli c up 'System eth0'   
+
         - name: Generate SSH keys to ensure that ipa-client-install uploads them to the ipa server
           command: /usr/sbin/sshd-keygen
        
@@ -86,7 +92,15 @@
         
         - name: Get the hostname to set as the host principal
           shell: hostname >/tmp/hostname.txt
-       
+
+        - name: ping ipa-server make sure it's up and running
+          shell: ping -c 1 {{ipa_server_address}}      
+          register: ping_result
+  
+        - name: fail the process if no access to ipa-server
+          fail: msg="No connection to ipa.sfzhang.com"
+          when: ping_result.rc != 0
+ 
         - name: ipa client install
           #Red Hat recommends not to start the sshd service prior to the kickstart enrollment.
           #While starting sshd before enrolling the client generates the SSH keys automatically

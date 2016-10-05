@@ -1,0 +1,47 @@
+---
+# mariadb playbook
+- hosts: test2
+  gather_facts: yes
+  tasks:
+         - name: install mariadb-related packages
+           yum: name={{item}} state=latest
+           with_items:
+                    - mariadb
+                    - mariadb-server
+                    - mariadb-test
+
+         - name: install pip on RHEL
+           shell: easy_install pip
+           when: ansible_os_family == "RedHat" and ansible_distribution == "RedHat"
+                
+         - name: install python-pip python-wheel on CentOS
+           yum: name={{item}} state=latest
+           with_items:
+                    - python-pip
+                    - python-wheel
+           when: ansible_os_family == "RedHat" and ansible_distribution == "CentOS"
+         
+         - name: install python pexpect module for ansible expect module
+           shell: pip install pexpect
+
+         - name: start mariadb service
+           service: name=mariadb state=started
+
+         - name: enable database service at boot
+           service: name=mariadb enabled=yes
+
+         - name: secure mariadb database
+           expect:
+                 command: mysql_secure_installation
+                 responses:
+                        (?i)current: ""
+                        (?i)Set: "Y"
+                        (?i)New: "sfzhang"
+                        (?i)Re-enter: "sfzhang"
+                        (?i)Remove: "Y"
+                        (?i)Disallow: "Y"
+                        (?i)test: "n"
+                        (?i)Reload: "Y"
+
+         - name: enable firewall mariadb service
+           firewalld: service=mysql state=enabled permanent=true immediate=true

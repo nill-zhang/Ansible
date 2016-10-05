@@ -23,23 +23,37 @@
         
         - name: disable selinux
           selinux: policy=targeted state=permissive
-        
+
+        - name: make sure rngd service is started to generate high-quality entropy
+          service: name=rngd state=started
+           
         - name: install ipa-server unattended
           shell: "ipa-server-install --setup-dns --realm=SFZHANG.COM --domain=sfzhang.com 
                            --ds-password=password --admin-password=password
                            --unattended --mkhomedir --forwarder=8.8.8.8
                            --reverse-zone=122.168.192.in-addr.arpa"
-        
+
+        - name: repeatedly echo kerberos admin password for interaction with kinit
+          shell: yes password|kinit admin
+      
+        #if use expect module make sure pexpect 3.3+ is installed
+        #- name: init admin credentials
+        #  expect: 
+        #      command: kinit admin
+        #      responses: 
+        #         "admin@SFZHANG.COM": "password"
+        #      echo: yes
+
         - name: add host entry and otp for client1.sfzhang.com
-          shell: ipa host-add client1.sfzhang.com --password=sfzhang
+          shell: ipa host-add client1.sfzhang.com --password=sfzhang --force
         
         
         - name: add host entry and otp for client2.sfzhang.com
-          shell: ipa host-add client2.sfzhang.com --password=sfzhang
+          shell: ipa host-add client2.sfzhang.com --password=sfzhang --force
         
         
         - name: add host entry and otp for services.sfzhang.com
-          shell: ipa host-add services.sfzhang.com --password=sfzhang
+          shell: ipa host-add services.sfzhang.com --password=sfzhang --force
         
         - name: enable relevant ipa-server ports in firewall-cmd
           firewalld: service={{item}} state=enabled permanent=true immediate=true
@@ -52,22 +66,41 @@
                     - kpasswd
                     - dns
                     - ntp
+
         - name: set ipa_server_address to be used by clients
           set_fact: ipa_server_address={{ansible_eth0.ipv4.address}}
         
+        - name: make sure the link is up
+          shell: nmcli c up "System eth0"
+           
         
 - hosts: client1.sfzhang.com:client2.sfzhang.com:services.sfzhang.com
   gather_facts: no
   tasks:                     
         - name: ignore peer dns and enable IPA dns on clients
-          shell: nmcli c modify eth0 ipv4.ignore-auto-dns=yes ipv4.dns={{ipa_server_address}}
+          shell: nmcli c modify 'System eth0' ipv4.ignore-auto-dns yes ipv4.dns {{ipa_server_address}}
           
+        - name: you have to restart connection to make sure new DNS server is loaded in /etc/resolv.conf
+          shell: nmcli c down 'System eth0';nmcli c up 'System eth0'   
+
         - name: Generate SSH keys to ensure that ipa-client-install uploads them to the ipa server
           command: /usr/sbin/sshd-keygen
        
+        # variables like $HOME and operations like"><|;&" do not work in command module
+        #- name: Get the hostname to set as the host principal
+        #  command: /bin/hostname >/tmp/hostname.txt
+        
         - name: Get the hostname to set as the host principal
-          command: /bin/hostname >/tmp/hostname.txt
-       
+          shell: hostname >/tmp/hostname.txt
+
+        - name: ping ipa-server make sure it's up and running
+          shell: ping -c 1 {{ipa_server_address}}      
+          register: ping_result
+  
+        - name: fail the process if no access to ipa-server
+          fail: msg="No connection to ipa.sfzhang.com"
+          when: ping_result.rc != 0
+ 
         - name: ipa client install
           #Red Hat recommends not to start the sshd service prior to the kickstart enrollment.
           #While starting sshd before enrolling the client generates the SSH keys automatically

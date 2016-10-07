@@ -1,7 +1,7 @@
 ---
         #for Virtual Host
         
-- hosts: virtualhost
+- hosts: packethost 
   gather_facts: yes
   tasks:
 
@@ -23,13 +23,24 @@
                    - gcc
                    - python-devel
                    - openssl-devel
+                   - pexpect
                    - libffi-devel
-                   - epel-release
-                   - bpython
-                   - python-pip
-                   - ansible
                    - nmap
 
+        - name: install epel-release on Hypervisor if it's centos based
+          yum: name=epel-release state=present
+          when: ansible_os_family == "RedHat" and ansible_distribution == "CentOS"
+          register: install_epel
+
+        - name: install ansible after epel-release installation
+          yum: name=ansible state=present
+          when: install_epel|succeeded
+
+        - name: install pip,ansible on Hypervisor if it's rhel based
+          shell: easy_install pip;pip install ansible
+          when: ansible_os_family == "RedHat" and ansible_distribution == "RedHat" 
+          register: pip_install
+      
         - name: update all packages
           yum: name=* state=latest
 
@@ -42,19 +53,22 @@
           #- name: copy kickstart files to Virtual Host
           #local_action: command rsync -a /root/vm_kickstart/*.cfg /var/www/html/vm_kickstart/
         
-        - name: copy kickstart files to Virtual Host
+        - name: copy kickstart files to Hypervisor
           copy: src={{item}} dest=/var/www/html/vm_kickstart
           with_fileglob:
                    - /root/vm_kickstart/*.cfg
                    
-        - name: copy python files to Virtual Host
+        - name: copy python files to Hypervisor
           copy: src={{item}} dest=/root/python_init mode=0755
           with_fileglob:
                    - /root/python_init/*
                    
-        - name: copy vm_deploy.yaml to host
+        - name: copy vm_deploy.yaml to Hypervisor
           copy: src=/root/yaml/vm_deploy.yaml dest=/etc/ansible/vm_deploy.yaml
-        
+       
+        - name: copy rng device to Hypervisor
+          copy: src=/root/xmls/rng.xml dest=/tmp/rng.xml
+ 
         - name: start libvirtd service
           service: name=libvirtd state=restarted
        
@@ -67,9 +81,9 @@
         - name: enable http service at boot time
           service: name=httpd enabled=yes
         
-       #- name: setup local  nfs service
-       #- name: setup local ftp service
-       #- name: setup local dhcp,tftp service
+        #- name: setup local  nfs service
+        #- name: setup local ftp service
+        #- name: setup local dhcp,tftp service
        
         - name: install ipa server virtual machine
           command: 'virt-install --name=ipa
@@ -115,9 +129,39 @@
                     --os-variant centos7.0
                     --extra-args="ks=http://192.168.122.1/vm_kickstart/client2.ks.cfg console=ttyS0,115200n8"'
                     
-        - name: Pause for 10 minutes
-          pause: minutes=100
-       
+        - name: Pause for 60 minutes,wait for virtual machines to be installed 
+          pause: minutes=60
+               
+        - name: destroy ipa server
+          shell: virsh destroy ipa
+          ignore_errors: yes
+        
+        - name: attach random number generator from Hypervisor to ipa server
+          shell: virsh attach-device ipa /tmp/rng.xml --config --persistent 
+        
+        #  as an alternative you can undefine and redefine the ipa domian buy editing its xml file
+        #- name: add a device into ipa domain to accelerate ipa-server-install by generating high-quality entropy
+        #  blockinfile: 
+        #         dest: /etc/libvirt/qemu/ipa.xml       
+        #         marker: no        
+        #         block: |
+        #              <rng model='virtio'>
+        #              <backend model='random'>/dev/random</backend>
+        #              </rng>        
+        #         insertafter: "<devices>"  
+
+        #- name: line in file
+        #  lineinfile: dest=/etc/libvirt/qemu/ipa.xml line="False" state=absent        
+
+        - name: make sure virtual machines is started, restart an active vm is ok
+          shell: for i in client1 client2 ipa services;do virsh start $i;done
+          register: start_vm
+          ignore_errors: yes
+        
+        - name: Pause for 5 minutes, virtual machines need time to start
+          pause: minutes=5
+          when: start_vm|succeeded
+ 
         - name: execute vm-initialization script
           command: /root/python_init/deploy.py 192.168.122.*
        

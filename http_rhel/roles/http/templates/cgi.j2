@@ -1,0 +1,29 @@
+{% if cgi_server_name is defined %}
+<?php
+/**
+ * Created by PhpStorm.
+ * User: Shaofeng Zhang
+ * Date: 4/11/2016
+ * Time: 11:30 AM
+ */
+
+$counterLog = "counter.txt";
+// Check if the log file exists. If not create one and initialize the counter to zero.
+if (!file_exists($counterLog)) {
+    $f = fopen($counterLog, "w");
+    fwrite($f,"0");
+    fclose($f);
+}
+
+$f = fopen($counterLog,"r");
+$counter = fread($f, filesize($counterLog));
+fclose($f);
+$counter++;
+$f = fopen($counterLog, "w");
+fwrite($f, $counter);
+fclose($f);
+
+echo "you are visiting" {{cgi_server_name}} "Total number of visit: $counter <br>";
+show_source(__FILE__);
+
+{% endif %}

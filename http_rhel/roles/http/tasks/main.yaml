@@ -1,0 +1,89 @@
+---
+#this is the http role playbook, the tasks executed depends on your need
+#create by sfzhang 2016.9.25
+
+- name: install relevant packages
+  yum: name={{item}} state=installed
+  with_items:
+           - httpd
+           - httpd-manual
+           - mod_ssl
+           - mod_wsgi
+           - libselinux-python
+           - libsemanage-python
+
+- name: copy user authentication file
+  copy: src={{item}} dest=/etc/httpd
+  with_items:
+           - htusers
+           - htgroup
+  when: restricted_directory is defined
+
+- name: copy restricted file to restricted directory
+  copy: src=private.txt dest={{restricted_directory}} 
+  when: restricted_directory is defined
+
+- name: generate server-side self-signed cert and key
+  local_action: command 'openssl req -new -newkey rsa:2048 -days 365 -nodes -x509
+            -subj "/C=CA/ST=ON/L=TORONTO/O=GBC/CN={{secure_server_name}}"
+            -keyout {{secure_server_name}}.key -out {{secure_server_name}}.crt'
+ 
+  when: secure_server_name is defined
+  register: generate_cert
+
+- name: copy server-side cert to remote host
+  copy: src={{secure_server_name}}.crt dest=/etc/pki/tls/certs 
+  when: generate_cert|succeeded
+
+- name: copy server-side private key to remote host
+  copy: src={{secure_server_name}}.key dest=/etc/pki/tls/private
+  when: generate_cert|succeeded
+
+- name: secure webserver private key
+  file: path=/etc/pki/tls/private/{{secure_server_name}}.key state=file mode=0600
+
+- name: set selinux port for httpd
+  seport: ports={{server_port}} proto=tcp setype=http_port_t state=present
+  when: server_port is defined and server_port|int != 80 and server_port|int != 443
+
+- name: create server document root
+  file: path={{server_document_root|default('/var/www/html')}} state=directory recurse=yes setype=httpd_sys_content_t
+
+- name: create cgi script directory
+  file: path={{cgi_script_directory|default('/var/www/cgi')}} state=directory recurse=yes setype=httpd_sys_script_exec_t 
+  when: cgi_server_name is defined
+  register: create_cgi_path
+
+- name: create wsgi script directory
+  file: path={{wsgi_script_directory|default('/var/www/wsgi')}} state=directory recurse=yes setype=httpd_sys_content_t 
+  when: wsgi_server_name is defined
+  register: create_wsgi_path
+
+- name: copy cgi script to cgi server documentroot
+  template: src=cgi.j2 dest={{cgi_script_directory + '/cgi'}}
+  when: create_cgi_path|succeeded
+
+- name: copy wsgi script to wsgi server documentroot
+  template: src=wsgi.j2 dest={{wsgi_script_directory + '/wsgi'}}
+  when: create_wsgi_path|succeeded
+
+- name: copy main web page to  server documentroot
+  template: src=index.j2 dest={{server_document_root + '/index.html'}}
+
+- name: copy virtualhost file to httpd optional config directory
+  template: vhosts.j2 dest=/etc/httpd/conf.d
+
+- name: open firewall port for httpd
+  firewalld: port={{item}}/tcp state=enabled permanent=true immediate=true
+  with_items:
+           - "{{server_port|default('80')}}"
+           - "{{cgi_server_port|default('80')}}"
+           - "{{wsgi_server_port|default('80')}}"
+
+
+
+- name: restart httpd
+  notify:
+        - restart httpd
+        - enable httpd
+

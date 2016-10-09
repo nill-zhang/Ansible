@@ -1,0 +1,62 @@
+
+
+{% if server_port is undefined %}
+
+<virtualhost *:80>
+    servername {{server_name|default('www.sfzhang.com')}}
+    documentroot {{server_document_root|default('/var/www/html')}}
+</virtualhost>
+
+{% elif server_port == 443 %}}
+
+<virtualhost *:80>
+    servername {{secure_server_name}}
+    documentroot {{server_document_root|default('var/www/html')}}
+</virtualhost>
+
+<virtualhost *:443>
+    servername {{secure_server_name}}}
+    documentroot {{server_document_root|default('/var/www/html')}}
+    sslengine on
+    sslprotocol all -sslv2
+    sslcertificatefile /etc/pki/tls/certs/{{server_name}}.crt
+    sslcertificatekeyfile /etc/pki/tls/private/{{server_name}}.key
+</virtualHost>
+
+{% else %}
+<virtualhost *:{{server_port}}>
+    servername {{server_name|default('www.sfzhang.com')}}
+    documentroot {{server_document_root|default('/var/www/html')}}
+</virtualhost>
+{% endif %}
+
+{#cgi php dynamic contents server  #}
+{{% if cgi_server_name is defined and cgi_script_directory is defined %}}
+
+<virtualhost *:{{cgi_server_port|default('80')}}>
+      servername {{cgi_server_name}}
+      scriptalias /phpcgi/ {{cgi_script_directory}}
+</virtualhost>
+{{% endif %}}
+
+{#wsgi python dynamic contents server#}
+{{% if wsgi_server_name is defined  and wsgi_script_directory is defined %}}
+<virtualhost *:{{wsgi_server_port|default('80')}}>
+      servername {{wsgi_server_name}}
+      wsgiscriptalias /pywsgi/ {{wsgi_script_directory}}
+</virtualhost>
+{{% endif %}}
+
+{{% if restricted_directory is defined %}}
+<directory {{restricted_directory}}>
+    allowoverride none
+    options indexes
+    authtype {{auth_type|default('basic')}}
+    authname please provide your credentials to accessing files
+    authuserfile {{auth_user_file|default('/etc/httpd/htusers)}}
+    authgroupfile {{auth_group_file|default('/etc/httpd/htgroup')}}
+    require user {{require_user|default('valid-user')}}
+    require group {{require_group}}
+
+</directory>
+{{% endif %}}

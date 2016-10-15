@@ -1,4 +1,5 @@
 ---
+# created by sfzhang 
 # mariadb playbook
 - hosts: test2
   gather_facts: yes
@@ -9,6 +10,7 @@
                     - mariadb
                     - mariadb-server
                     - mariadb-test
+                    - mysql-python
 
          - name: install pip on RHEL
            shell: easy_install pip
@@ -42,6 +44,8 @@
                         (?i)Disallow: "Y"
                         (?i)test: "n"
                         (?i)Reload: "Y"
+         - name: add user sfzhang with all priviledges on all hosts
+           mysql_user: login_user=root login_password=sfzhang name=dba password=dba priv=*.*:all state=present
 
          - name: enable firewall mariadb service
            firewalld: service=mysql state=enabled permanent=true immediate=true

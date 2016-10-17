@@ -1,0 +1,17 @@
+---
+# created by sfzhang 2016.10.15
+- name: install http and mod_ssl packages
+  yum: 
+     name: "{{item}}"
+     state: latest
+     with_items:
+              - "{{web_package}}"
+              - "{{ssl_package}}"
+     when: "{{ansible_memory_mb.real.free}} > {{memory}}" and 
+           inventory_hostname in groups["webservers"]
+
+- name: start httpd service
+  service: 
+     name: "{{web_service}}" 
+     state: started
+...

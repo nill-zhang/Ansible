@@ -1,0 +1,49 @@
+---
+# created by sfzhang 2016.10.15
+- name: check httpd package installation status
+  shell: yum list installed {{web_package}}
+  register: httpd_check
+  failed_when: "{{httpd_check.rc}} != 0"
+
+- block:
+      - name: retrieve httpd config file
+        get_url: 
+              url: "{{http_uri}}"
+              dest: /etc/httpd/conf.d
+
+      - name: create ssl certs directory
+        file: 
+              state: directory
+              path: /etc/httpd/conf.d/ssl
+              mode: 0755
+ 
+      - name: create log file directory
+        file: 
+              state: directory
+              path: /var/www/html/log
+              mode: 0755
+
+      - name: check ssl config file status
+        stat: /etc/httpd/conf.d/ssl.conf
+        register: stat_result
+ 
+      - name: backup ssl.conf if it exists
+        shell: mv /etc/httpd/conf.d/ssl.conf /etc/httpd/conf.d/ssl.conf.bak
+        when: stat_result.stat.exists
+
+      - name: retrieve ssl certificates from ftp server
+        unarchive: 
+              src: "{{ssl_uri}}"
+              dest: /etc/httpd/conf.d/ssl
+              copy: no
+ 
+      - name: create home page content
+        copy: 
+              content: "{{ansible_fqdn}} ({{ansible_default_ipv4.address}})
+                        has been customized by Ansible\n"
+              dest: /var/www/html/index.html
+        notify:
+              - restart_services
+
+  when: httpd.check == 0
+...

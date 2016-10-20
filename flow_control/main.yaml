@@ -1,0 +1,45 @@
+---
+# created by sfzhang 2016.10.15
+- hosts: webservers
+  tasks:
+      - block:
+            - name: import tasks
+              include: tasks/install_packages.yaml 
+              vars:
+                  memory: 256
+                  web_package: httpd
+                  ssl_package: mod_ssl
+                  web_service: httpd
+            
+            - name: import configure_web task
+              include: tasks/configure_web.yaml
+              vars:
+                  https_uri: http://materials.sfzhang.com/https.conf
+                  ssl_uri: http://materials.sfzhang.com/ssl.tar.gz
+
+            - name: import configure_firewall task
+              include: tasks/configure_firewall.yaml
+              vars:
+                  fw_package: firewalld
+                  fw_service: firewalld
+
+        rescue:
+            - name: install httpd package
+              yum: name=httpd state=latest
+              notify:
+                  - restart_services
+
+        always:
+            - name: query state of httpd
+              shell: systemctl status httpd
+              register: httpd_status
+            
+            - name: print httpd status
+              debug: var={{httpd_status}}
+  handlers:
+      - name: restart_services
+        service: name={{item}} state=restarted
+        with_items:
+                 - "{{webservice}}"
+                 - "{{fw_service}}"
+...

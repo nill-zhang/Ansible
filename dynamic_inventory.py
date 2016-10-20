@@ -35,6 +35,6 @@ if __name__ == "__main__":
     parser.add_argument("--list", action="store_true")
     parser.add_argument("--host", action="store_false")
     if parser.parse_args().list:
-        print(json.dumps(inventory_dict,indent=5))
+        print(json.dumps(inventory_dict))
     else:
         print(json.dumps({}))

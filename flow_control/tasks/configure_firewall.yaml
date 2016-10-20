@@ -1,0 +1,16 @@
+---
+# created by sfzhang 2016.10.15
+- name: installl firewall package
+  yum: name={{fw_package}} state=latest
+
+- name: start firewalld service
+  service: name={{fw_service}} state=started
+
+- name: allow firewall http https inbound traffic 
+  firewalld: service={{item}} immediate=true permanent=true state=enabled
+  with_items:
+           - http
+           - https
+  tags:
+      - production
+...

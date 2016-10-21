@@ -8,7 +8,7 @@
   yum: name={{ansible_local.custom.packages.db_package}} state=latest
 
 - name: setup content of homepage
-  copy: content={{http_content}} dest={{web_root}}/index.html
+  copy: content={{html_content}} dest={{web_root}}/index.html
 
 - name: start and enable apache service
   service: name=httpd state=started enabled=true

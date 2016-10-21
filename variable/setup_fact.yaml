@@ -1,5 +1,5 @@
 ---
-# tasks for crate custom fact on remote host
+# tasks for creating custom fact on remote hosts
 - name: create custom fact directory
   file: path={{remote_fact_dir}} state=directory recurse=true
 

@@ -1,0 +1,15 @@
+---
+# create user accounts from encrypted vairable file
+# created by sfzhang 2016.10.9
+- name: create user accounts on all remote hosts
+  hosts: developservers
+  remote_user: devop
+  become: true
+  become_ask_pass: sfzhang
+  vars_files:
+           - vars/secret.yaml
+  tasks:
+           - name create users from secret.yaml
+             user: name={{item.username}} password={{item.password|password_hash('sha512')}}
+             with_items: "{{newusers}}"
+...

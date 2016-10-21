@@ -1,0 +1,35 @@
+---
+# a main playbook shows different sources of variables
+# created by sfzhang 2016.10.13
+- hosts: test2.sfzhang.com
+  vars:
+      firewall_package: firewalld
+      firewall_service: http
+  tasks:
+     - name: import variable files
+       include_vars: vars/main.yaml
+
+     - name: import custom fact setup task
+       include: setup_facts.yam
+
+     - name: import the other task setting up http and mariadb
+       include tasks/main.yaml
+       vars:
+           html_content: "hi, this is test2.sfzhang.com's home page"
+
+     - name: install firewalld
+       yum: name={{firewall_package}} state=latest
+
+     - name: start firewalld service
+       service: name=firewalld state=started enabled=yes
+
+     - name: allow http traffic
+       firewalld: service=http state=enabled immediate=true permanent=true
+
+     - name: add more contents into homepage
+       lineinfile: dest={{web_root}}/index.html line="{{inventory_hostname}}(
+                   ansible_default.ipv4.address)has been customized by Ansible"
+
+     - name: query homepage
+       uri: url=http://test2.sfzhang.com status_code=200
+...

@@ -1,5 +1,0 @@
----
-- name: install httpd server
-  hosts: webserver
-  roles: 
-       - http

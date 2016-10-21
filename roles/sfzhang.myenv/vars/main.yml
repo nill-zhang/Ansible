@@ -1,0 +1,8 @@
+---
+# vars file for sfzhang.myenv
+
+myenv_package: 
+             - git
+             - tree
+             - vim-enhanced
+

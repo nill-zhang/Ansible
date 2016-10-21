@@ -1,0 +1,16 @@
+---
+# tasks file for sfzhang.myenv
+- name: install packages
+  yum: name={{item}} state=latest
+  with_items: "{{myenv_packages}}"
+
+- name: copy profile picture to user homedir
+  copy: src=profile.png dest=/home/{{myenv_user}}/
+
+- name: addd alias for user
+  lineinfile: dest=/home/{{myenv_user}}/.bashrc line="alias tree='tree -C'"
+
+- name: add script for all users
+  template: src=motd.sh.j2 dest=/etc/profile.d owner=root group=root mode=0644
+
+...

@@ -1,0 +1,28 @@
+---
+# tasks file for sfzhang.myapache
+- name: install httpd and firewalld
+  yum: name={{item}} state=latest
+  with_items:
+           - httpd
+           - firewalld
+
+- block:
+        - name: copy apache config to remote host
+          template: src=apache_httpdconf.j2 dest=/etc/httpd/conf/httpd.conf mode=0444 owner=root
+
+        - name: template out homepage content
+          template: src=apache_indexhtml.j2 dest=/var/www/html owner=root mode=0444
+          notify:
+                - restart httpd
+
+        - name: start httpd and firewalld service
+          service: name={{item}} state=started enabled=yes
+          with_items:
+               - httpd
+               - firewalld
+
+        - name: enable http traffic in firewall
+          firewalld: service=http permanent=true immediate=true enabled=yes
+   
+  when: enable_apache == true
+

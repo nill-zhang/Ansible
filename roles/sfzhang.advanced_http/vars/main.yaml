@@ -1,0 +1,20 @@
+---
+# define webserver variables to control  httpd.conf templates
+server_document_root: /www/sfzhang
+#server_name: 
+server_port: 443
+secure_server_name: secure.sfzhang.com
+wsgi_server_port: 567
+wsgi_script_directory: /www/sfzhang/wsgi
+wsgi_server_name: wsgi.sfzhang.com
+cgi_server_name: cgi.sfzhang.com
+cgi_server_port: 999
+cgi_script_directory: /www/sfzhang/cgi
+restricted_directory: /www/sfzhang/private
+auth_type: basic
+#auth_user_file:
+#auth_group_file:
+require_user: valid-user
+require_group: colleagues
+...
+

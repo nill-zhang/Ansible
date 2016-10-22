@@ -1,0 +1,38 @@
+---
+- # tasks for sfzhang.vagrant
+- name: download vagrant for centOS
+  get_url: url={{vagrant_package_url}} dest=/root
+
+- name: install vagrant package
+  shell: yum install /root/vagrant_1.8.6_x86_64.rpm
+
+- name: create vagrant projects directory
+  file: state=directory dest=/root/vagrant recurse=yes
+
+- name: instatll other libvirt packages
+  yum: name={{item}} state=latest
+  with_items:
+           - qemu
+           - libvirt
+           - libvirt-devel
+           - gcc
+           - qemu-kvm
+
+- name: start libvirt kvm service
+  service: name=libvirt state=started enabled=yes
+
+- name: install vagrant-libvirt
+  shell: vagrant plugin install vagrant-libvirt
+
+- name: template out vagrantfile
+  template: src=vagrantfile.j2 dest=/root/vagrant
+
+- name: check Host virtualization capability
+  shell: lsmod|grep kvm
+  register: kvm_capabilities
+  fail_when: not kvm_capabilities 
+
+- name: start buildin virtual machine
+  shell: vagrant up --provider=libvirt
+
+...

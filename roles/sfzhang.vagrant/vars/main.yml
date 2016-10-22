@@ -1,0 +1,7 @@
+---
+# vars file for sfzhang.vagrant
+vagrant_package_url: https://releases.hashicorp.com/vagrant/1.8.6/vagrant_1.8.6_x86_64.rpm
+vagrant_config_vm_box: "CentOS7"
+vagrant_config_vm_box_url: "http://cloud.centos.org/centos/7/vagrant/x86_64/images/CentOS-7-x86_64-Vagrant-1601_01.LibVirt.box"
+vagrant_config_vm_hostname: "guest.sfzhang.com"
+
